@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.image.ImageView?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+    xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.controller.RemoteControlController" alignment="CENTER" spacing="20" style="-fx-padding: 30; -fx-background-color: #ffffff;">
+
+    <Label fx:id="connectionStatusLabel" text="Connected to: ..." style="-fx-font-size: 16; -fx-text-fill: green;" />
+    <ImageView fx:id="imageView" fitWidth="800" fitHeight="600" preserveRatio="true" />
+
+    <Button fx:id="disconnectButton" text="Disconnect" onAction="#disconnectFromServer" style="-fx-background-color: #d9534f; -fx-text-fill: white; -fx-font-weight: bold;" />
+</VBox>
