@@ -12,8 +12,17 @@ public class RemoteMouseClient {
      * Khởi tạo RemoteMouseClient với Socket đã kết nối.
      * Tự động tạo PrintWriter với autoFlush=true để gửi lệnh ngay lập tức.
      */
-    public RemoteMouseClient(Socket socket) throws Exception {
-        this.writer = new PrintWriter(socket.getOutputStream(), true); // autoFlush=true
+    // public RemoteMouseClient(Socket socket) throws Exception {
+    // this.writer = new PrintWriter(socket.getOutputStream(), true); //
+    // autoFlush=true
+    // }
+
+    /**
+     * SỬA LỖI: Khởi tạo RemoteMouseClient với PrintWriter đã có (dùng chung).
+     * Bỏ logic tạo PrintWriter ở đây.
+     */
+    public RemoteMouseClient(PrintWriter writer) {
+        this.writer = writer;
     }
 
     /** Di chuyển chuột tới (x, y) trên server */

@@ -90,6 +90,18 @@ public class ClientHandler implements Runnable {
 
                     // Thực thi lệnh (truyền 'this' làm context)
                     command.execute(this);
+                } else if (clientMessage.equalsIgnoreCase("REQUEST_FILE_TRANSFER")) {
+                    // 1. Parser trả về null (ĐÚNG)
+                    // 2. Chúng ta "bắt" lệnh đặc biệt này ở đây
+                    System.out.println("Client requests file transfer. Preparing acceptor...");
+
+                    // 3. Tạo luồng mới để chấp nhận file trên Kênh 2
+                    File saveDir = new File("/home/hoang/received");
+                    FileTransferAcceptor fileAcceptor = new FileTransferAcceptor(
+                            saveDir,
+                            this.writer, // Writer của Kênh 1
+                            this.outputLock);
+                    new Thread(fileAcceptor, "FileAcceptor-" + clientAddress).start();
                 } else {
                     // Log lỗi QUAN TRỌNG
                     System.err.println("[Parser] FAILED to parse: " + clientMessage);
