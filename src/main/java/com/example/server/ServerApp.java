@@ -5,88 +5,183 @@ import java.awt.AWTException;
 import java.io.IOException;
 import java.net.*;
 import java.util.Enumeration;
+import java.util.List;
+import java.util.Scanner;
 
 public class ServerApp {
 
-    // Cổng (PORT) mà server sẽ lắng nghe
-    private final static int PORT = 5000;
+    public static void main(String[] args) {
+        int port = 5000; // Port của bạn
 
-    /**
-     * Finds the local IPv4 address, excluding loopback interfaces.
-     * (Tìm địa chỉ IPv4 cục bộ, loại trừ giao diện loopback. Đây là IP Client
-     * Windows sẽ kết nối tới.)
-     */
+        // --- LUỒNG 1: LẮNG NGHE KẾT NỐI ---
+        Thread connectionThread = new Thread(() -> {
+            try (ServerSocket serverSocket = new ServerSocket(port)) {
+                System.out.println("Server started on port " + port);
+                System.out.println("Type 'help' for commands.");
 
-    private static String getLocalIpAddress() {
-        try {
-            // Duyệt qua tất cả các giao diện mạng (network interfaces)
-            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
-            while (networkInterfaces.hasMoreElements()) {
-                NetworkInterface ni = networkInterfaces.nextElement();
+                while (true) {
+                    Socket socket = serverSocket.accept();
 
-                // Bỏ qua các giao diện ảo, loopback, hoặc không hoạt động
-                if (ni.isLoopback() || !ni.isUp()) {
-                    continue;
+                    // Tạo Handler và chạy
+                    ClientHandler handler = new ClientHandler(socket);
+
+                    // Thêm vào danh sách quản lý
+                    ClientManager.getInstance().addClient(handler);
+
+                    new Thread(handler).start();
                 }
-
-                // Lấy danh sách địa chỉ IP từ giao diện này
-                Enumeration<InetAddress> addresses = ni.getInetAddresses();
-                while (addresses.hasMoreElements()) {
-                    InetAddress addr = addresses.nextElement();
-
-                    // Chỉ lấy địa chỉ IPv4
-                    if (addr instanceof Inet4Address) {
-                        // Trả về IP hợp lệ đầu tiên được tìm thấy
-                        return addr.getHostAddress();
-                    }
-                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            // Nếu không tìm thấy, trả về loopback (cho trường hợp lỗi)
-            return "127.0.0.1";
-        } catch (SocketException e) {
-            e.printStackTrace();
-            return "127.0.0.1";
+        });
+        connectionThread.setDaemon(true); // Khi main tắt, thread này cũng tắt
+        connectionThread.start();
+
+        // --- LUỒNG 2 (MAIN): XỬ LÝ LỆNH CỦA ADMIN ---
+        handleAdminCommands();
+    }
+
+    private static void handleAdminCommands() {
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            System.out.print("Server> ");
+            String input = scanner.nextLine().trim();
+            String[] parts = input.split("\\s+");
+            String cmd = parts[0].toLowerCase();
+
+            switch (cmd) {
+                case "list":
+                    printClientList();
+                    break;
+
+                case "grant":
+                    if (parts.length < 2) {
+                        System.out.println("Usage: grant <id>");
+                    } else {
+                        try {
+                            int id = Integer.parseInt(parts[1]);
+                            ClientManager.getInstance().grantControl(id);
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid ID format.");
+                        }
+                    }
+                    break;
+
+                case "revoke": // Thu hồi quyền (không ai được điều khiển)
+                    // Tự cài đặt logic tương tự grant nếu muốn
+                    System.out.println("Feature TODO: Revoke all permissions.");
+                    ClientManager.getInstance().revokeAllControl();
+                    break;
+
+                case "help":
+                    System.out.println("Commands: list, grant <id>, exit");
+                    break;
+
+                case "exit":
+                    System.out.println("Shutting down server...");
+                    System.exit(0);
+                    break;
+
+                default:
+                    if (!cmd.isEmpty())
+                        System.out.println("Unknown command.");
+            }
         }
     }
 
-    public static void main(String[] args) {
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-
-            // Tự động lấy và in IP khi server khởi động
-            String serverIP = getLocalIpAddress();
-            System.out.println("=============================================");
-            System.out.println("SERVER IS RUNNING!");
-            System.out.println("Client should connect to IP: " + serverIP);
-            System.out.println("Server is listening on port: " + PORT);
-            System.out.println("=============================================");
-
-            // Vòng lặp vĩnh cửu để Server luôn sẵn sàng chấp nhận Client mới
-            while (true) {
-                System.out.println("\nWaiting for a new client to connect...");
-
-                // Chờ client kết nối (lệnh này sẽ blocking)
-                Socket clientSocket = serverSocket.accept();
-                System.out.println("Client connected: " +
-                        clientSocket.getInetAddress().getHostAddress());
-
-                // Sử dụng Đa luồng: Tạo một luồng (Thread) mới để xử lý Client này,
-                // sau đó Server chính quay lại chờ Client tiếp theo ngay lập tức.
-                // ClientHandler clientHandler = new ClientHandler(clientSocket);
-                // Thread thread = new Thread(clientHandler);
-                // thread.start();
-
-                try {
-                    ClientHandler handler = new ClientHandler(clientSocket);
-                    new Thread(handler).start();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-
-        } catch (IOException e) {
-            System.err.println("Could not listen on port " + PORT + ". Error: " +
-                    e.getMessage());
-            e.printStackTrace();
+    private static void printClientList() {
+        List<ClientHandler> list = ClientManager.getInstance().getClients();
+        System.out.println("--- Connected Clients ---");
+        for (int i = 0; i < list.size(); i++) {
+            ClientHandler c = list.get(i);
+            boolean isAdmin = ClientManager.getInstance().isController(c);
+            System.out.printf("ID: %d | IP: %s | Role: %s%n",
+                    i, c.getClientAddress(), (isAdmin ? "CONTROLLER" : "VIEWER"));
         }
+        System.out.println("-------------------------");
     }
 }
+
+// // Cổng (PORT) mà server sẽ lắng nghe
+// private final static int PORT = 5000;
+
+// /**
+// * Finds the local IPv4 address, excluding loopback interfaces.
+// * (Tìm địa chỉ IPv4 cục bộ, loại trừ giao diện loopback. Đây là IP Client
+// * Windows sẽ kết nối tới.)
+// */
+
+// private static String getLocalIpAddress() {
+// try {
+// // Duyệt qua tất cả các giao diện mạng (network interfaces)
+// Enumeration<NetworkInterface> networkInterfaces =
+// NetworkInterface.getNetworkInterfaces();
+// while (networkInterfaces.hasMoreElements()) {
+// NetworkInterface ni = networkInterfaces.nextElement();
+
+// // Bỏ qua các giao diện ảo, loopback, hoặc không hoạt động
+// if (ni.isLoopback() || !ni.isUp()) {
+// continue;
+// }
+
+// // Lấy danh sách địa chỉ IP từ giao diện này
+// Enumeration<InetAddress> addresses = ni.getInetAddresses();
+// while (addresses.hasMoreElements()) {
+// InetAddress addr = addresses.nextElement();
+
+// // Chỉ lấy địa chỉ IPv4
+// if (addr instanceof Inet4Address) {
+// // Trả về IP hợp lệ đầu tiên được tìm thấy
+// return addr.getHostAddress();
+// }
+// }
+// }
+// // Nếu không tìm thấy, trả về loopback (cho trường hợp lỗi)
+// return "127.0.0.1";
+// } catch (SocketException e) {
+// e.printStackTrace();
+// return "127.0.0.1";
+// }
+// }
+
+// public static void main(String[] args) {
+// try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+
+// // Tự động lấy và in IP khi server khởi động
+// String serverIP = getLocalIpAddress();
+// System.out.println("=============================================");
+// System.out.println("SERVER IS RUNNING!");
+// System.out.println("Client should connect to IP: " + serverIP);
+// System.out.println("Server is listening on port: " + PORT);
+// System.out.println("=============================================");
+
+// // Vòng lặp vĩnh cửu để Server luôn sẵn sàng chấp nhận Client mới
+// while (true) {
+// System.out.println("\nWaiting for a new client to connect...");
+
+// // Chờ client kết nối (lệnh này sẽ blocking)
+// Socket clientSocket = serverSocket.accept();
+// System.out.println("Client connected: " +
+// clientSocket.getInetAddress().getHostAddress());
+
+// // Sử dụng Đa luồng: Tạo một luồng (Thread) mới để xử lý Client này,
+// // sau đó Server chính quay lại chờ Client tiếp theo ngay lập tức.
+// // ClientHandler clientHandler = new ClientHandler(clientSocket);
+// // Thread thread = new Thread(clientHandler);
+// // thread.start();
+
+// try {
+// ClientHandler handler = new ClientHandler(clientSocket);
+// new Thread(handler).start();
+// } catch (Exception e) {
+// e.printStackTrace();
+// }
+// }
+
+// } catch (IOException e) {
+// System.err.println("Could not listen on port " + PORT + ". Error: " +
+// e.getMessage());
+// e.printStackTrace();
+// }
+// }
+// }

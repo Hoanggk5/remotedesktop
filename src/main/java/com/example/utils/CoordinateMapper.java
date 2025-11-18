@@ -15,15 +15,12 @@ public class CoordinateMapper {
             double viewWidth, double viewHeight,
             int serverWidth, int serverHeight) {
 
-        if (currentImage == null || viewWidth <= 0 || viewHeight <= 0 || serverWidth <= 0) {
+        if (currentImage == null || viewWidth <= 0 || viewHeight <= 0 || serverWidth <= 0 || serverHeight <= 0) {
             return null;
         }
 
         double imgWidth = currentImage.getWidth();
         double imgHeight = currentImage.getHeight();
-        if (imgWidth <= 0 || imgHeight <= 0) {
-            return null;
-        }
 
         double viewRatio = viewWidth / viewHeight;
         double imgRatio = imgWidth / imgHeight;
@@ -45,21 +42,17 @@ public class CoordinateMapper {
         double imageY = event.getY() - offsetY;
 
         if (imageX < 0 || imageY < 0 || imageX > displayedWidth || imageY > displayedHeight) {
-            return null; // Click ra ngoài lề (letterbox)
+            return null; // Click ra ngoài lề
         }
 
-        double scaleX = imgWidth / displayedWidth;
-        double scaleY = imgHeight / displayedHeight;
+        // Tỷ lệ từ displayed image → server screen
+        double scaleX = serverWidth / displayedWidth;
+        double scaleY = serverHeight / displayedHeight;
 
-        double imgPixelX = imageX * scaleX;
-        double imgPixelY = imageY * scaleY;
-
-        double screenX = (imgPixelX / imgWidth) * serverWidth;
-        double screenY = (imgPixelY / imgHeight) * serverHeight;
-
-        int serverX = (int) Math.round(screenX);
-        int serverY = (int) Math.round(screenY);
+        int serverX = (int) Math.round(imageX * scaleX);
+        int serverY = (int) Math.round(imageY * scaleY);
 
         return new Point2D(serverX, serverY);
     }
+
 }

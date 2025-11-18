@@ -6,6 +6,7 @@ import com.example.model.ConnectionInf;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import com.example.service.ClientService; // Mới
 import com.example.utils.CoordinateMapper;
@@ -155,7 +156,21 @@ public class RemoteControlController {
     private void sendMouseMove(MouseEvent event) {
         if (clientService == null || !clientService.isRunning())
             return;
+        // --- SỬA LỖI: Thêm khối kiểm tra này ---
 
+        // --- KẾT THÚC SỬA LỖI ---
+        if (clientService.getServerWidth() <= 0 || clientService.getServerHeight() <= 0) {
+            // Chưa biết kích thước server → không gửi
+            return;
+        }
+
+        // (Code log debug và gọi CoordinateMapper của bạn giữ nguyên)
+        System.out.println(String.format(
+                "[Client UI] Mouse: (%.0f, %.0f) | View: (%.0f, %.0f) | Server: (%d, %d) | Image: %s",
+                event.getX(), event.getY(),
+                imageView.getBoundsInLocal().getWidth(), imageView.getBoundsInLocal().getHeight(),
+                clientService.getServerWidth(), clientService.getServerHeight(),
+                (imageView.getImage() != null ? "Exists" : "NULL")));
         // Logic tính toán phức tạp đã được chuyển đi
         Point2D serverCoords = CoordinateMapper.map(
                 event,
