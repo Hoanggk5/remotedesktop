@@ -11,7 +11,12 @@ import java.util.Scanner;
 public class ServerApp {
 
     public static void main(String[] args) {
-        int port = 5000; // Port của bạn
+        int port = 5000;
+
+        // --- IN THÔNG TIN IP CỦA SERVER ---
+        String localIp = getLocalIpAddress();
+        System.out.println("Local Server IP: " + localIp);
+        // ----------------------------------
 
         // --- LUỒNG 1: LẮNG NGHE KẾT NỐI ---
         Thread connectionThread = new Thread(() -> {
@@ -22,26 +27,40 @@ public class ServerApp {
                 while (true) {
                     Socket socket = serverSocket.accept();
 
-                    // Tạo Handler và chạy
                     ClientHandler handler = new ClientHandler(socket);
-
-                    // Thêm vào danh sách quản lý
                     ClientManager.getInstance().addClient(handler);
-
                     new Thread(handler).start();
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                // Chỉ in lỗi nếu nó không phải là lỗi đóng socket thông thường
+                if (!(e instanceof IOException && e.getMessage().contains("socket closed"))) {
+                    e.printStackTrace();
+                }
             }
         });
-        connectionThread.setDaemon(true); // Khi main tắt, thread này cũng tắt
+        connectionThread.setDaemon(true);
         connectionThread.start();
 
         // --- LUỒNG 2 (MAIN): XỬ LÝ LỆNH CỦA ADMIN ---
         handleAdminCommands();
     }
 
+    /**
+     * Lấy địa chỉ IP cục bộ của Server (thường là IP trong mạng LAN).
+     * 
+     * @return Địa chỉ IP dưới dạng chuỗi hoặc "Unknown" nếu gặp lỗi.
+     */
+    private static String getLocalIpAddress() {
+        try {
+            // Lấy địa chỉ cục bộ. getHostAddress() trả về IP.
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (Exception e) {
+            return "Unknown";
+        }
+    }
+
     private static void handleAdminCommands() {
+        // ... (phần handleAdminCommands() giữ nguyên như code của bạn)
         Scanner scanner = new Scanner(System.in);
         while (true) {
             System.out.print("Server> ");
@@ -67,14 +86,12 @@ public class ServerApp {
                     }
                     break;
 
-                case "revoke": // Thu hồi quyền (không ai được điều khiển)
-                    // Tự cài đặt logic tương tự grant nếu muốn
-                    System.out.println("Feature TODO: Revoke all permissions.");
+                case "revoke":
                     ClientManager.getInstance().revokeAllControl();
                     break;
 
                 case "help":
-                    System.out.println("Commands: list, grant <id>, exit");
+                    System.out.println("Commands: list, grant <id>, revoke, exit");
                     break;
 
                 case "exit":

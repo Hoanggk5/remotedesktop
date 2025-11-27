@@ -295,15 +295,50 @@ public class ClientHandler implements Runnable {
                 if (command != null) {
                     // Thực thi lệnh (Command sẽ tự check quyền qua ClientManager)
                     command.execute(this);
-                } else if (clientMessage.equalsIgnoreCase("REQUEST_FILE_TRANSFER")) {
-                    // File transfer: Logic cũ của bạn
-                    // (Có thể thêm check quyền nếu muốn chỉ Admin được gửi file)
-                    File saveDir = new File("C:\\received_files");
-                    if (!saveDir.exists())
-                        saveDir.mkdirs();
+                }
+                // else if (clientMessage.equalsIgnoreCase("REQUEST_FILE_TRANSFER")) {
+                // // File transfer: Logic cũ của bạn
+                // // (Có thể thêm check quyền nếu muốn chỉ Admin được gửi file)
+                // File saveDir = new File("/home/hoang/received/");
+                // if (!saveDir.exists())
+                // saveDir.mkdirs();
 
-                    FileTransferAcceptor fileAcceptor = new FileTransferAcceptor(saveDir, this.writer, this.outputLock);
-                    new Thread(fileAcceptor).start();
+                // FileTransferAcceptor fileAcceptor = new FileTransferAcceptor(saveDir,
+                // this.writer, this.outputLock);
+                // new Thread(fileAcceptor).start();
+                // }
+                else if (clientMessage.equalsIgnoreCase("REQUEST_FILE_TRANSFER")) {
+
+                    // ============================================================
+                    // 1. KIỂM TRA QUYỀN (SECURITY CHECK)
+                    // ============================================================
+                    // Logic này giống hệt SecurityCheck.allow(context)
+                    if (ClientManager.getInstance().isController(this)) {
+
+                        // --- NẾU CÓ QUYỀN: Thực hiện logic mở cổng nhận file ---
+                        System.out.println(
+                                "[ClientHandler] File transfer request APPROVED for " + this.getClientAddress());
+
+                        String userHome = System.getProperty("user.home");
+                        File saveDir = new File(
+                                userHome + File.separator + "received");
+
+                        if (!saveDir.exists())
+                            saveDir.mkdirs();
+
+                        // Tạo thread nhận file
+                        FileTransferAcceptor fileAcceptor = new FileTransferAcceptor(saveDir, this.writer,
+                                this.outputLock);
+                        new Thread(fileAcceptor).start();
+
+                    } else {
+                        // --- NẾU KHÔNG CÓ QUYỀN: Từ chối ---
+                        System.out.println(
+                                "[ClientHandler] File transfer DENIED (Not a Controller): " + this.getClientAddress());
+
+                        // Gửi thông báo lỗi về cho Client (để hiện lên màn hình người dùng)
+                        sendMessage("ERROR_PERMISSION You do not have permission to send files");
+                    }
                 }
             }
 

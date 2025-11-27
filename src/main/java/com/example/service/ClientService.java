@@ -85,6 +85,7 @@ public class ClientService {
 
                         // --- ĐÂY LÀ LOGIC BẠN ĐANG THIẾU ---
                     } else if (header.startsWith("ACCEPT_FILE_TRANSFER ")) {
+
                         try {
                             // 1. Đọc port mà server gửi
                             int filePort = Integer.parseInt(header.split(" ")[1]);
@@ -103,7 +104,26 @@ public class ClientService {
                         }
                         // --- KẾT THÚC LOGIC BỊ THIẾU ---
 
-                    } else if (header.startsWith("IMG_START")) {
+                    } else if (header.startsWith("ERROR_PERMISSION")) {
+                        // Logic xử lý khi Server từ chối (do không có quyền điều khiển)
+                        String msg = header.substring("ERROR_PERMISSION ".length());
+                        System.err.println("Server Error: " + msg);
+
+                        // Reset file đang chờ (vì gửi thất bại)
+                        this.fileUserSelected = null;
+
+                        // Hiển thị thông báo lên UI (JavaFX Thread)
+                        Platform.runLater(() -> {
+                            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                                    javafx.scene.control.Alert.AlertType.ERROR);
+                            alert.setTitle("Access Permission Error");
+                            alert.setHeaderText("File sending failed");
+                            alert.setContentText(msg);
+                            alert.show(); // Dùng show() thay vì showAndWait() để tránh block UI thread nhận ảnh
+                        });
+                    }
+
+                    else if (header.startsWith("IMG_START")) {
                         // (Logic đọc buffer ảnh giữ nguyên)
                         int size = Integer.parseInt(header.split(" ")[1]);
                         byte[] buffer = new byte[size];
